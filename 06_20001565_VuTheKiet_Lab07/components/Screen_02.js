@@ -1,50 +1,58 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, FlatList} from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRoute, useNavigation } from '@react-navigation/native';
 
-import Male from '../assets/male.png'
-import Female from '../assets/female.png'
 import Search from '../assets/search.png'
 import Tick from '../assets/tick.png'
 import Note from '../assets/note.png'
 
-//Danh sách người dùng, ảnh, công việc
-//Ví dụ nhập tên An
-const userData = {
-    'An': {
-      image: Male,
-      description: 'Mô tả về An.',
-      tasks: ['Việc 1', 'Việc 2', 'Việc 3', 'Việc 4', 'Việc 5']
-    },
-    'Bình': {
-        image: Male,
-        description: 'Mô tả về Bình.',
-        tasks: ['Việc 1', 'Việc 2', 'Việc 3', 'Việc 4', 'Việc 5']
-    },
-    'Trâm': {
-        image: Female,
-        description: 'Mô tả về Trâm.',
-        tasks: ['Việc 1', 'Việc 2', 'Việc 3', 'Việc 4', 'Việc 5']
-    },
-    'Trang': {
-        image: Female,
-        description: 'Mô tả về Trang.',
-        tasks: ['Việc 1', 'Việc 2', 'Việc 3', 'Việc 4', 'Việc 5']
-    },
-};
 
-export default function Screen02({route, navigation}) {
-    const {name} = route.params;
-    const user = userData[name];
-    const [tasks, setTasks] = useState(user.tasks);
+export default function Screen02() {
+
+    const route = useRoute();
+    const navigation = useNavigation();
+    const [userData, setUserData] = useState({});
+    const [tasks, setTasks] = useState([]);
+
+    useEffect(() => {
+        if (route.params && route.params.userData) {
+            setUserData(route.params.userData);
+            fetchUserTasks(route.params.userData.id);
+        }
+    }, [route.params]);
+
     const goToAddTaskScreen03 = () => {
-        navigation.navigate('Screen03', { addTask: addTask,
-                                            name: name, 
-                                            user: user, });
+        navigation.navigate('Screen03', {
+            userId: userData.id,
+            addTask: addTask,
+        });
+    };
+
+    const addTask = async (task) => {
+        try {
+            await fetch(`https://65485652dd8ebcd4ab22bd72.mockapi.io/api/user/todos/${userData.id}/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ description: task }),
+            });
+            fetchUserTasks();
+        } catch (error) {
+            console.error('Error adding task', error);
+        }
     };
     
-    const addTask = (task) => {
-        setTasks([...tasks, task]);
+    const fetchUserTasks = async () => {
+        try {
+            const response = await fetch(`https://65485652dd8ebcd4ab22bd72.mockapi.io/api/user/todos/${userData.id}/tasks`);
+            const tasksData = await response.json();
+            setTasks(tasksData);
+        } catch (error) {
+            console.error('Error fetching user tasks', error);
+        }
     };
+    
     return (
         <View style={styles.container}>
             <View style={{ justifyContent: 'space-between', flexDirection: 'row', margin: 20, marginLeft: 30}}>
@@ -52,10 +60,10 @@ export default function Screen02({route, navigation}) {
                     <Text>Back</Text>
                 </TouchableOpacity>
                 <View style={{flexDirection: 'row', marginRight: 20}}>
-                    <Image source={user.image} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10}}/>
+                    <Image source={{ uri: userData.avatar}} style={{ width: 50, height: 50, borderRadius: 25, marginRight: 10}}/>
                     <View style={{alignItems: 'center'}}>
-                        <Text style={{fontFamily: 'Epilogue', fontSize: 20, fontWeight: 700}}>Hi {name}</Text>
-                        <Text style={{fontFamily: 'Epilogue', fontSize: 14, fontWeight: 700}}>{user.description}</Text>
+                        <Text style={{fontFamily: 'Epilogue', fontSize: 20, fontWeight: 700}}>Hi {userData.name}</Text>
+                        <Text style={{fontFamily: 'Epilogue', fontSize: 14, fontWeight: 700}}>{userData.description}</Text>
                     </View>
                 </View>
             </View>
@@ -67,8 +75,7 @@ export default function Screen02({route, navigation}) {
             </View>
             <View style={{marginTop: 30, alignItems: 'center', justifyContent: 'center'}}>
                 <FlatList  
-                    data={tasks}
-                    keyExtractor={(item, index) => index.toString()}
+                    data={userData.tasks}
                     renderItem={({ item }) => (
                     <View style={{width: 334, height: 43, alignItems: 'center', border: '1px solid #9095A0', borderRadius: 12, flexDirection: 'row', marginTop: 10, backgroundColor: '#9095A0'}}>
                         <Image source={Tick} style={{width: 20, height: 20, marginLeft: 20}}/>
